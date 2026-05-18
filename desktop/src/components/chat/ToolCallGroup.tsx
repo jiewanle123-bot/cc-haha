@@ -989,7 +989,7 @@ function formatAgentStructuredNestedItem(item: unknown): string {
 function formatAgentGroupLabel(label: string): string {
   const normalized = label.trim()
   if (!normalized) return 'Grouped results'
-  return normalized.length > 1 ? `${normalized[0].toUpperCase()}${normalized.slice(1)}` : normalized.toUpperCase()
+  return `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`
 }
 
 function formatAgentResultLocation(record: Record<string, unknown>): string {
