@@ -134,7 +134,7 @@ async function handleOpenaiChat(
       Authorization: `Bearer ${apiKey}`,
     },
     body: signClaudeCodeCCHInTransformedString(JSON.stringify(transformed)),
-    signal: AbortSignal.timeout(isStream ? aiRequestTimeoutMs : Math.max(aiRequestTimeoutMs, 300_000)),
+    signal: AbortSignal.timeout(aiRequestTimeoutMs),
     ...proxyOptions,
   })
 
@@ -202,7 +202,7 @@ async function handleOpenaiResponses(
       Authorization: `Bearer ${apiKey}`,
     },
     body: signClaudeCodeCCHInTransformedString(JSON.stringify(transformed)),
-    signal: AbortSignal.timeout(isStream ? aiRequestTimeoutMs : Math.max(aiRequestTimeoutMs, 300_000)),
+    signal: AbortSignal.timeout(aiRequestTimeoutMs),
     ...proxyOptions,
   })
 
