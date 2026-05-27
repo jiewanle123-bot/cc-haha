@@ -25,6 +25,7 @@ import {
   type ComposerAttachment,
 } from '../lib/composerAttachments'
 import { useComposerFileDrop } from '../components/chat/useComposerFileDrop'
+import { shouldSubmitOnEnter } from '../components/chat/sendShortcut'
 import {
   getLocalizedFallbackCommands,
   filterSlashCommands,
@@ -108,6 +109,7 @@ export function EmptySession() {
   const setActiveView = useUIStore((state) => state.setActiveView)
   const addToast = useUIStore((state) => state.addToast)
   const currentModel = useSettingsStore((state) => state.currentModel)
+  const chatSendBehavior = useSettingsStore((state) => state.chatSendBehavior)
   const lastPluginReloadSummary = usePluginStore((state) => state.lastReloadSummary)
   const draftRuntimeSelection = useSessionRuntimeStore((state) => state.selections[DRAFT_RUNTIME_SELECTION_KEY])
   const draftRuntimeSelectionKey = draftRuntimeSelection
@@ -380,7 +382,8 @@ export function EmptySession() {
         if (
           event.key === 'Enter' &&
           exactSlashCommand &&
-          slashFilter.trim().toLowerCase() === exactSlashCommand.name.toLowerCase()
+          slashFilter.trim().toLowerCase() === exactSlashCommand.name.toLowerCase() &&
+          shouldSubmitOnEnter(event, chatSendBehavior)
         ) {
           event.preventDefault()
           void handleSubmit()
@@ -398,7 +401,7 @@ export function EmptySession() {
       }
     }
 
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (shouldSubmitOnEnter(event, chatSendBehavior)) {
       event.preventDefault()
       handleSubmit()
     }

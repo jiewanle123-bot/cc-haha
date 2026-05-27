@@ -39,6 +39,7 @@ import {
   type ComposerAttachment,
 } from '../../lib/composerAttachments'
 import { useComposerFileDrop } from './useComposerFileDrop'
+import { shouldSubmitOnEnter } from './sendShortcut'
 
 type GitInfo = SessionGitInfo
 
@@ -131,6 +132,7 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
     activeTabId ? state.selections[activeTabId] : undefined,
   )
   const currentModel = useSettingsStore((state) => state.currentModel)
+  const chatSendBehavior = useSettingsStore((state) => state.chatSendBehavior)
   const runtimeSelectionKey = runtimeSelection
     ? `${runtimeSelection.providerId ?? 'official'}:${runtimeSelection.modelId}`
     : undefined
@@ -694,7 +696,11 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
         return
       }
       if (event.key === 'Enter') {
-        if (exactSlashCommand && slashFilter.trim().toLowerCase() === exactSlashCommand.name.toLowerCase()) {
+        if (
+          exactSlashCommand &&
+          slashFilter.trim().toLowerCase() === exactSlashCommand.name.toLowerCase() &&
+          shouldSubmitOnEnter(event, chatSendBehavior)
+        ) {
           event.preventDefault()
           handleSubmit()
           return
@@ -717,7 +723,7 @@ export function ChatInput({ variant = 'default', compact = false }: ChatInputPro
       }
     }
 
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (shouldSubmitOnEnter(event, chatSendBehavior)) {
       event.preventDefault()
       handleSubmit()
     }

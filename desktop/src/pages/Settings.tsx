@@ -9,7 +9,7 @@ import { ConfirmDialog } from '../components/shared/ConfirmDialog'
 import { Input } from '../components/shared/Input'
 import { Button } from '../components/shared/Button'
 import { Dropdown } from '../components/shared/Dropdown'
-import type { PermissionMode, EffortLevel, ThemeMode, UpdateProxyMode, NetworkProxyMode, WebSearchMode, AppMode } from '../types/settings'
+import type { PermissionMode, EffortLevel, ThemeMode, UpdateProxyMode, NetworkProxyMode, WebSearchMode, AppMode, ChatSendBehavior } from '../types/settings'
 import type { Locale } from '../i18n'
 import type { SavedProvider, UpdateProviderInput, ProviderTestResult, ModelMapping, ApiFormat, ProviderAuthStrategy } from '../types/provider'
 import type { ProviderPreset } from '../types/providerPreset'
@@ -1489,6 +1489,8 @@ function GeneralSettings() {
     setLocale,
     theme,
     setTheme,
+    chatSendBehavior,
+    setChatSendBehavior,
     skipWebFetchPreflight,
     setSkipWebFetchPreflight,
     desktopNotificationsEnabled,
@@ -1629,6 +1631,19 @@ function GeneralSettings() {
       value: 'manual',
       label: t('settings.general.networkProxyModeManual'),
       description: t('settings.general.networkProxyModeManualDescription'),
+    },
+  ]
+
+  const CHAT_SEND_BEHAVIORS: Array<{ value: ChatSendBehavior; label: string; description: string }> = [
+    {
+      value: 'enter',
+      label: t('settings.general.chatSendBehaviorEnter'),
+      description: t('settings.general.chatSendBehaviorEnterDescription'),
+    },
+    {
+      value: 'modifierEnter',
+      label: t('settings.general.chatSendBehaviorModifier'),
+      description: t('settings.general.chatSendBehaviorModifierDescription'),
     },
   ]
 
@@ -2085,6 +2100,31 @@ function GeneralSettings() {
               )}
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">{t('settings.general.chatSendBehaviorTitle')}</h2>
+        <p className="text-sm text-[var(--color-text-tertiary)] mb-3">{t('settings.general.chatSendBehaviorDescription')}</p>
+        <div className="grid grid-cols-2 gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-container-low)] p-2">
+          {CHAT_SEND_BEHAVIORS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => void setChatSendBehavior(option.value)}
+              aria-pressed={chatSendBehavior === option.value}
+              className={`rounded-lg border px-3 py-2 text-left transition-colors ${
+                chatSendBehavior === option.value
+                  ? 'border-[var(--color-brand)] bg-[var(--color-surface-selected)] text-[var(--color-text-primary)]'
+                  : 'border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
+              }`}
+            >
+              <div className="text-xs font-semibold">{option.label}</div>
+              <div className="mt-1 text-[11px] leading-4 text-[var(--color-text-tertiary)]">
+                {option.description}
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 
