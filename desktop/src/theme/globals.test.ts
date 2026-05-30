@@ -43,6 +43,7 @@ describe('desktop theme tokens', () => {
     '--color-activity-cell-border',
     '--color-activity-cell-border-hover',
     '--color-activity-cell-border-active',
+    '--shadow-activity-cell-hover',
     '--color-activity-tooltip-surface',
     '--color-activity-tooltip-border',
     '--color-activity-tooltip-text',
@@ -77,6 +78,15 @@ describe('desktop theme tokens', () => {
         expect(block, `${theme} should define ${token}`).toContain(`${token}:`)
       }
     }
+  })
+
+  it('keeps activity heatmap colors on the app theme accent instead of the old blue ramp', () => {
+    expect(css).not.toContain('#DCEEFF')
+    expect(css).not.toContain('#B6D9FF')
+    expect(css).not.toContain('#2387E8')
+    expect(css).toContain('--color-activity-heat-4: var(--color-primary);')
+    expect(css).toContain('.activity-heat-cell:hover')
+    expect(css).toContain('box-shadow: var(--shadow-activity-cell-hover);')
   })
 
   it('avoids color-mix in the startup-critical UI zoom shell chrome for Safari 15 WebView support', () => {
