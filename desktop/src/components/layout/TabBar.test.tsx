@@ -310,7 +310,9 @@ describe('TabBar', () => {
     expect(screen.getByTestId('tab-bar')).toHaveAttribute('data-desktop-drag-region')
     expect(screen.getByTestId('tab-bar-scroll-region')).toHaveAttribute('data-desktop-drag-region')
     expect(screen.getByTestId('tab-bar-drag-gutter')).toHaveAttribute('data-desktop-drag-region')
-    expect(screen.getByText('Untitled Session').closest('.tab-bar-interactive')).toBeInTheDocument()
+    const tab = screen.getByText('Untitled Session').closest('.tab-bar-interactive')
+    expect(tab).toBeInTheDocument()
+    expect(tab).not.toHaveAttribute('data-desktop-drag-region')
   })
 
   it('keeps the desktop tab strip at a roomier titlebar height', async () => {

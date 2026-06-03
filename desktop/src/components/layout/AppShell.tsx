@@ -6,6 +6,7 @@ import { UpdateChecker } from '../shared/UpdateChecker'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useUIStore, type SettingsTab } from '../../stores/uiStore'
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts'
+import { useElectronWindowDragRegions } from '../../hooks/useElectronWindowDragRegions'
 import {
   H5ConnectionRequiredError,
   initializeDesktopServerUrl,
@@ -130,6 +131,7 @@ export function AppShell() {
   }, [])
 
   useKeyboardShortcuts()
+  useElectronWindowDragRegions()
 
   useEffect(() => {
     if (isMobileShell && !wasMobileShellRef.current) {
