@@ -15,6 +15,11 @@ type SelectionRect = {
   height: number
 }
 
+type SelectionGeometry = {
+  rect: SelectionRect | DOMRect
+  isMultiLine: boolean
+}
+
 function clampValue(value: number, min: number, max: number) {
   return Math.max(min, Math.min(value, max))
 }
@@ -23,29 +28,42 @@ function isUsableRect(rect: SelectionRect | DOMRect) {
   return rect.width > 0 || rect.height > 0
 }
 
-function getRangeSelectionRect(range: Range): SelectionRect | null {
-  const boundingRect = typeof range.getBoundingClientRect === 'function'
-    ? range.getBoundingClientRect()
-    : null
-  if (boundingRect && isUsableRect(boundingRect)) return boundingRect
-
+function getRangeSelectionGeometry(range: Range): SelectionGeometry | null {
   const clientRects = typeof range.getClientRects === 'function'
     ? Array.from(range.getClientRects()).filter(isUsableRect)
     : []
-  if (clientRects.length === 0) return null
+  const boundingRect = typeof range.getBoundingClientRect === 'function'
+    ? range.getBoundingClientRect()
+    : null
 
-  const left = Math.min(...clientRects.map((rect) => rect.left))
-  const top = Math.min(...clientRects.map((rect) => rect.top))
-  const right = Math.max(...clientRects.map((rect) => rect.right))
-  const bottom = Math.max(...clientRects.map((rect) => rect.bottom))
-  return {
-    left,
-    top,
-    right,
-    bottom,
-    width: right - left,
-    height: bottom - top,
+  if (clientRects.length > 0) {
+    const left = Math.min(...clientRects.map((rect) => rect.left))
+    const top = Math.min(...clientRects.map((rect) => rect.top))
+    const right = Math.max(...clientRects.map((rect) => rect.right))
+    const bottom = Math.max(...clientRects.map((rect) => rect.bottom))
+    const unionRect = {
+      left,
+      top,
+      right,
+      bottom,
+      width: right - left,
+      height: bottom - top,
+    }
+    const maxLineHeight = Math.max(...clientRects.map((rect) => rect.height))
+    return {
+      rect: boundingRect && isUsableRect(boundingRect) ? boundingRect : unionRect,
+      isMultiLine: clientRects.length > 1 || unionRect.height > maxLineHeight * 1.6,
+    }
   }
+
+  if (boundingRect && isUsableRect(boundingRect)) {
+    return {
+      rect: boundingRect,
+      isMultiLine: boundingRect.height > 32,
+    }
+  }
+
+  return null
 }
 
 export function clearWindowSelection() {
@@ -67,7 +85,7 @@ export function getSelectionPopoverPosition(
     fallbackPointer?: { clientX: number; clientY: number }
   },
 ) {
-  const rect = getRangeSelectionRect(range)
+  const geometry = getRangeSelectionGeometry(range)
   const rootRect = root.getBoundingClientRect()
   const pointerInsideRoot = fallbackPointer
     && fallbackPointer.clientX >= rootRect.left
@@ -76,7 +94,7 @@ export function getSelectionPopoverPosition(
     && fallbackPointer.clientY <= rootRect.bottom
   const fallbackX = pointerInsideRoot ? fallbackPointer.clientX : rootRect.left + 24
   const fallbackY = pointerInsideRoot ? fallbackPointer.clientY : rootRect.top + 24
-  const selectionRect = rect ?? {
+  const selectionRect = geometry?.rect ?? {
     left: fallbackX,
     top: fallbackY,
     right: fallbackX,
@@ -100,12 +118,15 @@ export function getSelectionPopoverPosition(
     x: centerX - menuWidth / 2,
     y: selectionRect.top - menuHeight - offset,
   }
-  if (above.y >= VIEWPORT_MARGIN) return clampPosition(above)
 
   const right = {
     x: selectionRect.right + offset,
     y: centerY - menuHeight / 2,
   }
+  if (geometry?.isMultiLine && right.x + menuWidth <= viewportWidth - VIEWPORT_MARGIN) return clampPosition(right)
+
+  if (above.y >= VIEWPORT_MARGIN) return clampPosition(above)
+
   if (right.x + menuWidth <= viewportWidth - VIEWPORT_MARGIN) return clampPosition(right)
 
   const below = {

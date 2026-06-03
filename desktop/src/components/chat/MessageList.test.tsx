@@ -63,6 +63,9 @@ async function waitForSelectionMenuUpdate() {
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => resolve())
     })
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve())
+    })
   })
 }
 
@@ -119,7 +122,90 @@ async function selectMessageText(
   prepareMessageTextSelection(element, text, rect)
 
   await act(async () => {
+    fireEvent.pointerDown(element, {
+      button: 0,
+      clientX: rect.left ?? 160,
+      clientY: rect.top ?? 80,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerUp(element, {
+      button: 0,
+      clientX: rect.right ?? 280,
+      clientY: rect.bottom ?? 98,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
     fireEvent.mouseUp(element, { clientX: 260, clientY: 104 })
+    await Promise.resolve()
+  })
+  await waitForSelectionMenuUpdate()
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'Add to chat' })).toBeTruthy()
+  })
+}
+
+async function selectAcrossMessageText(
+  startElement: Element,
+  startText: string,
+  endElement: Element,
+  endText: string,
+  rect: Partial<DOMRect> = {},
+) {
+  const startNode = findTextNodeContaining(startElement, startText)
+  const endNode = findTextNodeContaining(endElement, endText)
+  const startOffset = startNode.textContent?.indexOf(startText) ?? -1
+  const endOffset = (endNode.textContent?.indexOf(endText) ?? -1) + endText.length
+  const range = document.createRange()
+  range.setStart(startNode, startOffset)
+  range.setEnd(endNode, endOffset)
+  Object.assign(range, {
+    getBoundingClientRect: () => ({
+      left: rect.left ?? 160,
+      top: rect.top ?? 80,
+      right: rect.right ?? 520,
+      bottom: rect.bottom ?? 150,
+      width: rect.width ?? 360,
+      height: rect.height ?? 70,
+      x: rect.x ?? rect.left ?? 160,
+      y: rect.y ?? rect.top ?? 80,
+      toJSON: () => ({}),
+    }),
+  })
+
+  const selectableRoot = startElement.closest('[data-message-shell]')?.parentElement?.parentElement
+  Object.assign(selectableRoot ?? startElement, {
+    getBoundingClientRect: () => ({
+      left: 120,
+      top: 48,
+      right: 720,
+      bottom: 320,
+      width: 600,
+      height: 272,
+      x: 120,
+      y: 48,
+      toJSON: () => ({}),
+    }),
+  })
+
+  window.getSelection()?.removeAllRanges()
+  window.getSelection()?.addRange(range)
+
+  await act(async () => {
+    fireEvent.pointerDown(startElement, {
+      button: 0,
+      clientX: rect.left ?? 160,
+      clientY: rect.top ?? 80,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    fireEvent.pointerUp(endElement, {
+      button: 0,
+      clientX: rect.right ?? 520,
+      clientY: rect.bottom ?? 150,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
     await Promise.resolve()
   })
   await waitForSelectionMenuUpdate()
@@ -1757,6 +1843,125 @@ describe('MessageList nested tool calls', () => {
     expect(floatingAddButton.style.top).toBe('12px')
   })
 
+  it('adds multi-line assistant reply selections across markdown blocks to the composer context', async () => {
+    useChatStore.setState({
+      sessions: {
+        [ACTIVE_TAB]: makeSessionState({
+          messages: [{
+            id: 'assistant-1',
+            type: 'assistant_text',
+            content: [
+              'First line can start the selection.',
+              '',
+              'Second paragraph should still belong to the same chat message.',
+              '',
+              '- Third block can finish the selection.',
+            ].join('\n'),
+            timestamp: 1,
+          }],
+        }),
+      },
+    })
+
+    render(<MessageList />)
+
+    const firstParagraph = screen.getByText('First line can start the selection.')
+    const listItem = screen.getByText('Third block can finish the selection.')
+    await selectAcrossMessageText(
+      firstParagraph,
+      'First line',
+      listItem,
+      'finish the selection',
+      { left: 160, top: 80, right: 520, bottom: 160, width: 360, height: 80 },
+    )
+    const floatingAddButton = screen.getByRole('button', { name: 'Add to chat' })
+
+    expect(floatingAddButton.style.left).toBe('530px')
+    expect(floatingAddButton.style.top).toBe('98px')
+
+    fireEvent.click(floatingAddButton)
+
+    expect(useWorkspaceChatContextStore.getState().referencesBySession[ACTIVE_TAB]).toMatchObject([
+      {
+        kind: 'chat-selection',
+        messageId: 'assistant-1',
+        sourceRole: 'assistant',
+      },
+    ])
+    expect(useWorkspaceChatContextStore.getState().referencesBySession[ACTIVE_TAB]?.[0]?.quote).toContain('First line')
+    expect(useWorkspaceChatContextStore.getState().referencesBySession[ACTIVE_TAB]?.[0]?.quote).toContain('finish the selection')
+  })
+
+  it('shows the selected-message action after browser selectionchange for multi-line replies', async () => {
+    useChatStore.setState({
+      sessions: {
+        [ACTIVE_TAB]: makeSessionState({
+          messages: [{
+            id: 'assistant-1',
+            type: 'assistant_text',
+            content: [
+              'Browser selection can settle after pointerup.',
+              '',
+              'The document selectionchange event should be enough to show the action.',
+            ].join('\n'),
+            timestamp: 1,
+          }],
+        }),
+      },
+    })
+
+    render(<MessageList />)
+
+    const firstParagraph = screen.getByText('Browser selection can settle after pointerup.')
+    const secondParagraph = screen.getByText('The document selectionchange event should be enough to show the action.')
+    const startNode = findTextNodeContaining(firstParagraph, 'Browser selection')
+    const endNode = findTextNodeContaining(secondParagraph, 'show the action')
+    const range = document.createRange()
+    range.setStart(startNode, startNode.textContent?.indexOf('Browser selection') ?? 0)
+    range.setEnd(
+      endNode,
+      (endNode.textContent?.indexOf('show the action') ?? 0) + 'show the action'.length,
+    )
+    Object.assign(range, {
+      getBoundingClientRect: () => ({
+        left: 150,
+        top: 76,
+        right: 500,
+        bottom: 140,
+        width: 350,
+        height: 64,
+        x: 150,
+        y: 76,
+        toJSON: () => ({}),
+      }),
+    })
+
+    const selectableRoot = firstParagraph.closest('[data-chat-selectable-message]')
+    Object.assign(selectableRoot ?? firstParagraph, {
+      getBoundingClientRect: () => ({
+        left: 120,
+        top: 48,
+        right: 720,
+        bottom: 280,
+        width: 600,
+        height: 232,
+        x: 120,
+        y: 48,
+        toJSON: () => ({}),
+      }),
+    })
+
+    window.getSelection()?.removeAllRanges()
+    window.getSelection()?.addRange(range)
+
+    await act(async () => {
+      document.dispatchEvent(new Event('selectionchange'))
+    })
+    await waitForSelectionMenuUpdate()
+
+    expect(screen.getByRole('button', { name: 'Add to chat' })).toBeTruthy()
+  })
+
   it('adds selected assistant reply text to the composer context', async () => {
     useChatStore.setState({
       sessions: {
@@ -1775,7 +1980,11 @@ describe('MessageList nested tool calls', () => {
 
     const assistantText = screen.getByText(/First inspect the file tree/)
     await selectMessageText(assistantText, 'quote the selected lines')
-    fireEvent.click(screen.getByRole('button', { name: 'Add to chat' }))
+    const floatingAddButton = screen.getByRole('button', { name: 'Add to chat' })
+
+    expect(floatingAddButton.closest('[data-chat-selectable-message]')).toBeNull()
+
+    fireEvent.click(floatingAddButton)
 
     expect(useWorkspaceChatContextStore.getState().referencesBySession[ACTIVE_TAB]).toMatchObject([
       {
